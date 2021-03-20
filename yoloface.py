@@ -1,10 +1,10 @@
 import argparse
 import sys
 import os
-
 from utils import *
 
-#####################################################################
+#terminal input: python3 yoloface.py --folder samples/ --output-dir outputs/
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--model-cfg', type=str, default='./cfg/yolov3-face.cfg',
                     help='path to config file')
@@ -16,14 +16,6 @@ parser.add_argument('--folder', type=str, default='',
 parser.add_argument('--output-dir', type=str, default='outputs/',
                     help='path to the output directory')
 args = parser.parse_args()
-
-#####################################################################
-# print the arguments
-print('----- info -----')
-print('[i] The config file: ', args.model_cfg)
-print('[i] The weights of model file: ', args.model_weights)
-print('[i] Path to directory: ', args.folder)
-print('###########################################################\n')
 
 # check outputs directory
 if not os.path.exists(args.output_dir):
@@ -39,9 +31,9 @@ net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
 net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
 
 
-def _main():
-    wind_name = 'face detection using YOLOv3'
-    cv2.namedWindow(wind_name, cv2.WINDOW_NORMAL)
+def detectFaces():
+
+    faces_detected = 0
     input_files = []
     output_file = ''
 
@@ -57,10 +49,8 @@ def _main():
 
             while True:
                 has_frame, frame = cap.read()
-
+ 
                 if not has_frame:
-                    print('[i] ==> Done processing!!!')
-                    print('[i] ==> Output file is stored at', os.path.join(args.output_dir, output_file))
                     cv2.waitKey(1000)
                     break
 
@@ -77,7 +67,7 @@ def _main():
                 # Remove the bounding boxes with low confidence
                 faces = post_process(frame, outs, CONF_THRESHOLD, NMS_THRESHOLD)
                 print('[i] ==> # detected faces: {}'.format(len(faces)))
-                print('#' * 60)
+                faces_detected += len(faces)
 
                 # initialize the set of information we'll displaying on the frame
                 info = [
@@ -93,8 +83,6 @@ def _main():
                 if args.folder:
                     cv2.imwrite(os.path.join(args.output_dir, output_file), frame.astype(np.uint8))
 
-                cv2.imshow(wind_name, frame)
-
                 key = cv2.waitKey(1)
                 if key == 27 or key == ord('q'):
                     print('[i] ==> Interrupted by user!')
@@ -102,10 +90,30 @@ def _main():
 
             cap.release()
             cv2.destroyAllWindows()
+    return faces_detected
 
-    print('==> All done!')
-    print('***********************************************************')
+def actualFaces():
+    path_xml = '/home/xdapperdonx/Desktop/Code/Undergraduate/Dataset/annotations'
+    xmls = []
+    counter = 0
+
+    for file_xml in os.listdir(path_xml):
+        if file_xml.endswith('.xml'):
+            xmls.append(file_xml)
+
+    for data in xmls:
+        
+        tree = ET.ElementTree(file=os.path.join(path_xml,data))
+        root = tree.getroot()
+
+        for elem in root.findall('./object/name'):
+            if elem.text == "with_mask" or elem.text == "without_mask":
+                counter += 1
+    return counter
+
+def calculation(faces_detected, actual_faces):
+    print((faces_detected/actual_faces) * 100)
 
 
 if __name__ == '__main__':
-    _main()
+    calculation(detectFaces(), actualFaces())

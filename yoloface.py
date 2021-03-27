@@ -1,10 +1,19 @@
+import logging
 import argparse
+import xml.etree.cElementTree as ET
 import sys
 import os
 from utils import *
 
-#terminal input: python3 yoloface.py --folder samples/ --output-dir outputs/
+logging.basicConfig(
+    filename='logfile',
+    format='%(asctime)s %(levelname)-8s %(message)s',
+    level=logging.INFO,
+    datefmt='%Y-%m-%d %H:%M:%S')
 
+logging.info("Executing program... \n------------------------")
+
+#terminal input: python3 yoloface.py --folder data/ --output-dir outputs/
 parser = argparse.ArgumentParser()
 parser.add_argument('--model-cfg', type=str, default='./cfg/yolov3-face.cfg',
                     help='path to config file')
@@ -24,8 +33,7 @@ if not os.path.exists(args.output_dir):
 else:
     print('==> Skipping create the {} directory...'.format(args.output_dir))
 
-# Give the configuration and weight files for the model and load the network
-# using them.
+# Give the configuration and weight files for the model and load the network using them.
 net = cv2.dnn.readNetFromDarknet(args.model_cfg, args.model_weights)
 net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
 net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
@@ -38,6 +46,7 @@ def detectFaces():
     output_file = ''
 
     if args.folder:
+
         #Error if no folder if found.
         if not os.path.isdir(args.folder):
             print("[!] ==> Input directory {} doesn't exist".format(args.folder))
@@ -66,7 +75,8 @@ def detectFaces():
 
                 # Remove the bounding boxes with low confidence
                 faces = post_process(frame, outs, CONF_THRESHOLD, NMS_THRESHOLD)
-                print('[i] ==> # detected faces: {}'.format(len(faces)))
+                logging.info('[i] ==> # detected faces: {}'.format(len(faces)))
+                logging.info(f"{filename}: {faces}\n------------------------")
                 faces_detected += len(faces)
 
                 # initialize the set of information we'll displaying on the frame
@@ -97,6 +107,7 @@ def actualFaces():
     xmls = []
     counter = 0
 
+    #stores xmls file in array
     for file_xml in os.listdir(path_xml):
         if file_xml.endswith('.xml'):
             xmls.append(file_xml)
@@ -108,12 +119,13 @@ def actualFaces():
 
         for elem in root.findall('./object/name'):
             if elem.text == "with_mask" or elem.text == "without_mask":
+
+                #increment when faces is detected
                 counter += 1
     return counter
 
 def calculation(faces_detected, actual_faces):
-    print((faces_detected/actual_faces) * 100)
-
+    logging.info("Accuracy percentage: " + str((faces_detected/actual_faces) * 100)+"%")
 
 if __name__ == '__main__':
     calculation(detectFaces(), actualFaces())
